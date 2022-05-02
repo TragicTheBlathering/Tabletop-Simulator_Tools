@@ -1,5 +1,5 @@
 ![TTS Logo](https://i.imgur.com/rLR2dkk.jpg)
-# Scripts and Snips Library for Tabletop Simulator
+# Various inGame Tools for TTS MOdding
 
 This is my github where I store my various ingame tools I have written for TTS. Your welcome to use them as you like for any purpose. I have recently moved to doing my mods on gitHub and they all use these files and will not work without them.
 

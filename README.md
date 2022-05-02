@@ -1,5 +1,5 @@
 ![TTS Logo](https://i.imgur.com/rLR2dkk.jpg)
-# Various inGame Tools for TTS MOdding
+# Various inGame Tools for TTS Modding
 
 This is my github where I store my various ingame tools I have written for TTS. Your welcome to use them as you like for any purpose. I have recently moved to doing my mods on gitHub and they all use these files and will not work without them.
 

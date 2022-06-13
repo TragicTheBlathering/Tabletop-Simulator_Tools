@@ -122,6 +122,7 @@ function editTags(ObjectsOnTool, tags, switch, rightClick)
     for _, obj in pairs(ObjectsOnTool.objects) do
         local Data = obj.getData()
         Process_Objects(Data, tagList, setSwitch(switch), rightClick)
+        setNameDecGM(Data, tags)
         print_ProcessList(obj,true)
         spawnEditedObject(Data, obj)
     end
@@ -132,9 +133,10 @@ function editTags(ObjectsOnTool, tags, switch, rightClick)
         print_ProcessContainerList(bag, i, 'BAG  ')
         for k, objData in pairs (Data.ContainedObjects) do
             if objData.Name == 'Deck' then
-                Process_Decks(objData, tagList, setSwitch(switch), rightClick)
+                Process_Decks(objData, tags, tagList, setSwitch(switch), rightClick)
             else
                 Process_Objects(objData, tagList, setSwitch(switch), rightClick)
+                setNameDecGM(objData, tags)
                 print_ProcessList(objData,false,'        ')
             end
         end
@@ -145,18 +147,58 @@ function editTags(ObjectsOnTool, tags, switch, rightClick)
     for i, deck in pairs(ObjectsOnTool.decks) do
         local Data = deck.getData()
         print_ProcessContainerList(deck, i, 'DECK')
-        Process_Decks(Data, tagList, setSwitch(switch), rightClick)
+        Process_Decks(Data, tags, tagList, setSwitch(switch), rightClick)
         spawnEditedObject(Data, deck)
     end
 end
 
-function Process_Decks(Data, tagList, switch_addRemove, rightClick)
+function setNameDecGM(Data, strList)
+    if strList.foundDesc then
+        local desciption = ''
+        for k,s in ipairs(strList.desc) do
+            if not strList.desc[k+1] then
+                desciption = desciption..s
+            else
+                desciption = desciption..s..'\n'
+            end
+        end
+        Data.Description = desciption
+    end
+
+    if strList.foundGMNote then
+        local gmNote = ''
+        for k,s in ipairs(strList.gm) do
+            if not strList.gm[k+1] then
+                gmNote = gmNote..s
+            else
+                gmNote = gmNote..s..'\n'
+            end
+        end
+        Data.GMNotes = gmNote
+    end
+
+    if strList.foundName then
+        if not strList.name.pos then
+            Data.Nickname = strList.name.n
+        else
+            if strList.name.pos == '-' then
+                Data.Nickname = strList.name.n..Data.Nickname
+            else
+                Data.Nickname = Data.Nickname..strList.name.n
+            end
+        end
+    end
+end
+
+function Process_Decks(Data, tags, tagList, switch_addRemove, rightClick)
     print_ProcessDeck(Data)
     -- Process the Deck itself
     Process_Objects(Data, tagList, switch_addRemove, rightClick)
+    setNameDecGM(Data, tags)
     -- Process Cards
     for k, objData in pairs (Data.ContainedObjects) do
         Process_Objects(objData, tagList, switch_addRemove, rightClick)
+        setNameDecGM(objData, tags)
         if printSwitch.cards then print_ProcessList(objData,false,'                ') end
     end
 end
@@ -319,8 +361,9 @@ function print_Start(switch, tagList, rightClick)
 end
 
 function FindTagsInDescriptionOfTool()
-    local z = {add={}, remove={}, foundAdd = false, foundRemove = false}
+    local z = {add={}, remove={}, foundAdd = false, foundRemove = false, name={pos=false, n=nil}, desc={}, gm={}, foundName = false, foundDesc = false, foundGMNote = false}
         local desc = stringtools.splitString(self.getDescription())
+        local GMnotes = stringtools.splitString(self.getGMNotes())
         local addTagsFoundinDesc = false
 
         for k, str in pairs(desc) do
@@ -346,6 +389,50 @@ function FindTagsInDescriptionOfTool()
                 local line = str:sub(8) --str:gsub("%remove:", "")
                 line = stringtools.removeWhiteSpace(line)
                 table.insert(z.remove, line)
+            end
+        end
+
+        for k, str in pairs(GMnotes) do
+            if string.find(string.lower(str), 'name:', 1, true) then
+                z.foundName = true
+                break
+            end
+        end
+
+        for k, str in pairs(GMnotes) do
+            if string.find(string.lower(str), 'desc:', 1, true) then
+                z.foundDesc = true
+                break
+            end
+        end
+
+        for k, str in pairs(GMnotes) do
+            if string.find(string.lower(str), 'gm:', 1, true) then
+                z.foundGMNote = true
+                break
+            end
+        end
+
+        for k, str in pairs(GMnotes) do
+            if string.find(string.lower(str), 'name:', 1, true) then
+                local line = str
+                local p = string.sub(str, 1, 1)
+                if string.lower(p) == 'n' then
+                    z.name.pos = false
+                    line = line:sub(6)
+                else
+                    z.name.pos = string.lower(p)
+                    line = line:sub(7)
+                end
+                z.name.n = line
+
+            elseif string.find(string.lower(str), 'desc:', 1, true) then
+                local line = str:sub(6)
+                table.insert(z.desc, line)
+
+            elseif string.find(string.lower(str), 'gm:', 1, true) then
+                local line = str:sub(4)
+                table.insert(z.gm, line)
             end
         end
 
@@ -529,7 +616,6 @@ function hot_PrintTags(playerColor, object, pointerPosition, isKeyUp)
         if tags[1] then
             printToAll('\nTags on Object : '..object.getGUID(), 'Orange')
             printToAll(' '..objString, 'Yellow')
-            print(logString(object.getTags(), '  n: '..nameString))
         else
             printToAll('\nERROR : There are no Tags on the object', 'Red')
             printToAll('  : \"'..nameString..'\"', 'Yellow')
@@ -538,31 +624,3 @@ function hot_PrintTags(playerColor, object, pointerPosition, isKeyUp)
         printToAll('ERROR : There is no Object Under the Cursor', 'Red')
     end
 end
-
---[[
-function setTagsToAdd()
-    local z = {}
-        local desc = stringtools.splitString(self.getDescription())
-        local addTagsFoundinDesc = false
-
-        for k, str in pairs(desc) do
-            if string.find(string.lower(str), 'add:', 1, true) then
-                addTagsFoundinDesc = true
-                break
-            end
-        end
-
-        if addTagsFoundinDesc then
-            for k, str in pairs(desc) do
-                if string.find(string.lower(str), 'add:', 1, true) then
-                    local line = str:sub(5) --str:gsub("%remove:", "")
-                    line = stringtools.removeWhiteSpace(line)
-                    table.insert(z, line)
-                end
-            end
-        else
-            z = nil
-        end
-    return z
-end
-]]

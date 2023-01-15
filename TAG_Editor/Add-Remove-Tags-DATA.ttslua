@@ -74,7 +74,7 @@ end
 function b_function_01(obj, playercolor, alt_click)
     local ObjectsOnTool = find_ObjectsOnTool()
     local TAGS = FindTagsInDescriptionOfTool()
-
+    --zprint(ObjectsOnTool,'ObjectsOnTool')
     if TAGS.foundAdd then
         if ObjectsOnTool.foundStuff then
             if not alt_click then
@@ -107,9 +107,14 @@ function b_function_02(obj, playercolor, alt_click)
             printToAll('\nERROR : There nothing on the tool to TAG!!', 'Red')
         end
     else
-        printToAll('\nERROR : There are'..w..' NO REMOVE TAGS '..r..' in the DESCRIPTION FIELD', 'Red')
-        printToAll('  Format : Add:TagName', 'Yellow')
-        printToAll('(Place each Tag on a NEW LINE in the Description)\n', 'Orange')
+        if not alt_click then
+            print('4')
+            editTags(ObjectsOnTool, TAGS, 'remove')
+        else
+            printToAll('\nERROR : There are'..w..' NO REMOVE TAGS '..r..' in the DESCRIPTION FIELD', 'Red')
+            printToAll('  Format : Add:TagName', 'Yellow')
+            printToAll('(Place each Tag on a NEW LINE in the Description)\n', 'Orange')
+        end
     end
 end
 
@@ -441,12 +446,12 @@ function FindTagsInDescriptionOfTool()
 end
 
 function find_ObjectsOnTool(pos, radius)
-    local zone = Physics.cast({ origin=self.getPosition(),
+    local zone = Physics.cast({ origin=self.getPosition()+Vector(0,2.5,0),
                                 direction={0,1,0},
                                 type=3,
                                 max_distance=0,
-                                size={13.5,5,13.9},
-                                debug=false})
+                                size={10.4,5,10.7},
+                                debug=true})
     local Objects = {}
     local Bags   = {}
     local Decks   = {}

@@ -1,0 +1,114 @@
+function onLoad()
+    createActivationButton()
+end
+
+function runRenameCard(drawnCard)
+    --print(drawnCard.getName())
+    --local name = drawnCard.getName():sub(1, -2)
+    drawnCard.setName(drawnCard.getName():gsub("Spell", "Magical.Spell"))
+    --drawnCard.setDescription('Spell')
+    --drawnCard.setDescription('Magical Spell')
+    print(drawnCard.getName()..' : '..drawnCard.getDescription())
+end
+
+--Activated by button press
+function click_fixDeck()
+    local func_findDeck = function(o) return o.tag=="Deck" end
+    local deckList = findInRadiusBy(self.getPosition(), 2, func_findDeck)
+    if #deckList == 0 then
+        broadcastToAll("ERROR: No deck found on device.", {0.9,0.2,0.2})
+    else
+        self.clearButtons()
+        spawnAllCards(deckList[1])
+    end
+end
+
+--Draws all cards into a vertical line, locked into place
+--Lets them all fall back down after they are done being drawn
+function spawnAllCards(deck)
+    function spawnAllCards_routine()
+        deck.setLock(true)
+        spawnedCardList = {}
+        local pos = deck.getPosition()
+        pos.y = pos.y + 1.75
+        pos.y = pos.y + 0.2 * #deck.getObjects()
+        for _ in ipairs(deck.getObjects()) do
+            local drawnCard = deck.takeObject({
+                position=pos,
+                callback="spawnAllCards_callback",
+                callback_owner=self
+            })
+            drawnCard.setLock(true)
+--------------------------------------------------------------------------------
+----------- Hack Rename Code goes here! ----------------------------------------
+            runRenameCard(drawnCard)
+--------------------------------------------------------------------------------
+            pos.y = pos.y - 0.2
+            coroutine.yield(0)
+        end
+
+        wait(2)
+
+        spawnedCardList = reverseTable(spawnedCardList)
+        for _, card in ipairs(spawnedCardList) do
+            card.setLock(false)
+            coroutine.yield(0)
+        end
+
+        createActivationButton()
+        return 1
+    end
+    startLuaCoroutine(self, 'spawnAllCards_routine')
+end
+
+--Callback, assigns each card to a table
+function spawnAllCards_callback(card)
+    table.insert(spawnedCardList, card)
+end
+
+--Finds objects in radius of a position, accepts optional filtering function
+function findInRadiusBy(pos, radius, func, debug)
+    local radius = (radius or 1)
+    local objList = Physics.cast({
+        origin=pos, direction={0,1,0}, type=2, size={radius,radius,radius},
+        max_distance=0, debug=(debug or false)
+    })
+
+    local refinedList = {}
+    for _, obj in ipairs(objList) do
+        if func == nil then
+            table.insert(refinedList, obj.hit_object)
+        else
+            if func(obj.hit_object) then
+                table.insert(refinedList, obj.hit_object)
+            end
+        end
+    end
+
+    return refinedList
+end
+
+--Coroutine delay, in seconds
+function wait(time)
+    local start = os.time()
+    repeat coroutine.yield(0) until os.time() > start + time
+end
+
+--Reverses a table
+function reverseTable(t)
+    local reversedTable = {}
+    local itemCount = #t
+    for k, v in ipairs(t) do
+        reversedTable[itemCount + 1 - k] = v
+    end
+    return reversedTable
+end
+
+--Spawns the button
+function createActivationButton()
+    self.createButton({
+        click_function="click_fixDeck", function_owner=self,
+        position={0,0.1,-0.82}, height=150, width=640, color={1,1,1,0},
+        tooltip="Apply fix to deck."
+    })
+end

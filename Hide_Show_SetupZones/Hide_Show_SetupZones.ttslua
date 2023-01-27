@@ -1,0 +1,90 @@
+local tool = require("/_libs/stringUtils/stringUtils")
+
+local zoneList = {}
+local butVals = {upPos = Vector(0,80,0), zonesExists = false, zonesHidden = true, butColour = 'Green', msg ="   DROPPING : ", labelName = "SetupZone\n<visible>", label_s = ""}
+
+function onload()
+    ZonesAreHidden()
+    MakeButtons()
+end
+
+function ZonesAreHidden()
+    zoneList = getObjectsWithTag('Setup_Zone')
+    if #zoneList > 0 then
+        butVals.zonesExists = true
+        if #zoneList > 1 then
+            butVals.label_s = 's'
+        end
+    end
+
+    local Y = 0
+    for k,v in pairs(zoneList) do
+        if v.getPosition().y > Y then
+            Y = v.getPosition().y
+        end
+    end
+
+    if Y > 0 then
+        butVals.zonesHidden = true
+        return true
+    else
+        butVals.zonesHidden = false
+        return false
+    end
+end
+
+function b_Function(buttonobj, player_clicker_color, alt_click)
+    local vecMove = Vector(0,0,0)
+    if self.getDescription():sub(1, 1) == "{" and self.getDescription():sub(-1) == "}" then
+        butVals.upPos = tool.findVectorFrom_string(self.getDescription())
+    end
+    
+    if butVals.zonesExists then
+        if butVals.zonesHidden then
+            printToAll('*** Lowering Setup Zone ***', 'Orange')
+            vecMove = Vector(-butVals.upPos.x, -butVals.upPos.y, -butVals.upPos.z)
+
+        else
+            printToAll('*** Raising Setup Zone ***', 'Orange')
+            vecMove = Vector(butVals.upPos.x,butVals.upPos.y, butVals.upPos.z)
+        end
+
+        for k,z in pairs(zoneList) do
+            for _,o in pairs(z.getObjects(true)) do
+                o.setPosition(o.getPosition()+vecMove)
+            end
+            z.setPosition(z.getPosition()+vecMove)
+        end
+    end
+
+    self.clearButtons()
+    MakeButtons()
+end
+
+function MakeButtons(switch)
+    if not butVals.zonesExists then
+        butVals.butColour = 'Blue'
+        butVals.labelName = "SetupZone"..butVals.label_s.."\n<missing>"
+    else
+        if ZonesAreHidden() then
+            --print('VISIABLE')
+            butVals.butColour = 'Green'
+            butVals.labelName = "SetupZone"..butVals.label_s.."\n<visible>"
+            butVals.msg ="   DROPPING : "
+        else
+            --print('HIDDEN')
+            butVals.butColour = 'Red'
+            butVals.labelName = "SetupZone"..butVals.label_s.."\n<missing>"
+            butVals.msg ="   RAISING : "
+        end
+    end
+
+    if switch == nil then
+        self.createButton({
+            label=butVals.labelName, click_function="b_Function", function_owner=self,
+            position={0,0.5,1}, rotation={0,180,0}, height=650, width=2200,
+            font_size=250, color=butVals.butColour, font_color={1,1,1},
+            --tooltip = 'Put a Vector in the Description to adjust move : {0,0,0}'
+        })
+    end
+end

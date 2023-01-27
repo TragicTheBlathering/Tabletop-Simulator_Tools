@@ -1,0 +1,198 @@
+local tool = {}
+      tool.splitString=require("/_libs/stringUtils/stringUtils").splitString
+
+local TopLabel = 'Move Setup Zone\nCords in Description' -- Name of Top Button
+local BotLabel = 'Bottom Button Name' -- Name of Top Button
+local MinButtonLength = 2500
+
+function onload()
+    self.setScale({2.30,2.30,2.30})
+    --setGlobalVariables()
+    makeButtons()
+end
+function setGlobalVariables()
+
+end
+
+function getZoneFromDesc(desc)
+    return getObjectFromGUID(desc:gsub('guid:',''))
+end
+
+--------------------------------------------------------------------------------
+-- Place Demo Code in Here -----------------------------------------------------
+
+function findFinalPosVectorFrom_GMNOTE(gmn)
+    gmn = gmn:gsub('{','')
+    gmn = gmn:gsub('}','')
+    local vec = tool.splitString(gmn, ',')
+    return Vector(vec[1], vec[2], vec[3])
+end
+
+function Top_Left_Click(obj, color, alt_click)
+
+    local zone = {}
+    zone.obj = getZoneFromDesc(self.getDescription())
+    zone.origPos = zone.obj.getPosition()
+    zone.contents = zone.obj.getObjects(true)
+    zone.finalPos = findFinalPosVectorFrom_GMNOTE(self.getGMNotes())
+
+    for k,o in pairs(zone.contents) do
+        local z = zone.obj
+        if alt_click then
+            zone.obj.setPosition(zone.origPos)
+            local o_PosLocalTo_z = z.positionToLocal(o.getPosition())
+            zone.obj.setPosition(zone.finalPos)
+            o.setPosition(z.positionToWorld(o_PosLocalTo_z))
+        else
+            if not o.hasTag('Scene_Set') then
+                --print('!!!')
+                zone.obj.setPosition(zone.origPos)
+                local o_PosLocalTo_z = z.positionToLocal(o.getPosition())
+                zone.obj.setPosition(zone.finalPos)
+                o.setPosition(z.positionToWorld(o_PosLocalTo_z))
+            end
+        end
+    end
+end
+
+function Top_Right_Click(obj, color, alt_click)
+    -- rotate everything by `a` degrees -- just subtract the object's x & z you want to rotate around, and then add after rotating over
+    --[[
+    local a = 180
+    for i, obj in ipairs(getObjects()) do
+        local objPos = obj.getPosition()
+        local objRot = obj.getRotation()
+        local newPos = objPos:rotateOver("y", a)
+        local newRot = objRot + Vector(0, a, 0)
+        obj.setPosition(newPos)
+        obj.setRotation(newRot)
+    end
+    ]]
+end
+--------------------------------------------------------------------------------
+-- Place Demo Code in Here -----------------------------------------------------
+function Bot_Left_Click(obj, color, alt_click)
+    print('Bottom Function : Left Click')
+end
+
+function Bot_Right_Click(obj, color, alt_click)
+    print('Bottom Function : Right Click')
+end
+
+--******************************************************************************
+--*** Ignore Below this line ***************************************************
+--******************************************************************************
+function f_Top(obj, color, alt_click)
+    Top_Left_Click(obj, color, alt_click)
+    --[[if not alt_click then
+    else
+        Top_Right_Click(obj, color, alt_click)
+    end]]
+end
+
+function f_Bot(obj, color, alt_click)
+    if not alt_click then
+        Bot_Left_Click(obj, color, alt_click)
+    else
+        Bot_Right_Click(obj, color, alt_click)
+    end
+end
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+function makeButtons()
+    local lable = nil
+    local ButtonList = {};
+            local button = {}
+                    button.click_function = 'f_Top'
+                    button.function_owner = self
+                    button.position = setDynamicButtonSizes_pos(TopLabel) --{0,0.5,1}
+                    button.rotation = {0,180,0}
+                    button.label =  TopLabel
+                    button.width = setDynamicButtonSizes_Width(TopLabel, MinButtonLength)
+                    button.height = setDynamicButtonSizes_Hight(TopLabel)
+                    button.font_size = 250
+                    button.tooltip = ': Right Click :\nAlso move objects with tag : Scene_Set'
+            table.insert(ButtonList, button)
+            button = {}
+                    button.click_function = 'f_Bot'
+                    button.function_owner = self
+                    button.label = BotLabel
+                    button.position = setDynamicButtonSizes_pos(BotLabel) --{0,0.5,-1}
+                    button.rotation = {0,180,0}
+                    button.width = setDynamicButtonSizes_Width(BotLabel, MinButtonLength)
+                    button.height = setDynamicButtonSizes_Hight(BotLabel)
+                    button.font_size = 250
+            --table.insert(ButtonList, button)
+
+    for k, b in pairs (ButtonList) do
+        self.createButton(b)
+    end
+end
+
+function setDynamicButtonSizes_pos(label)
+    local posVec = Vector(0,0.5,1)
+    local lines = {}
+    for line in label:gmatch("[^\r\n]+") do
+        table.insert(lines, line)
+    end
+
+    adjustZ = 1 + 0.1*#lines
+    if label == TopLabel then
+        posVec:setAt('z', adjustZ)
+    elseif label == BotLabel then
+        posVec:setAt('z', -adjustZ)
+    end
+    --print(logString(lines, 'lines'))
+
+    return posVec
+end
+
+function setDynamicButtonSizes_Hight(lable)
+    local minHight = 450
+    local lines = {}
+    for line in lable:gmatch("[^\r\n]+") do
+        table.insert(lines, line)
+    end
+
+    local count = #lines
+    local adjust_hight = 200
+    if count > 1 then
+        for i=1, count, 1 do
+            minHight = minHight + adjust_hight
+        end
+    end
+    return minHight
+end
+
+function setDynamicButtonSizes_Width(str, minWidth)
+    local lable = string.upper(str)--str:gsub("^%l", string.upper)
+    local lableSize = #lable
+    --print(lable)
+    local adjust_Width = 100
+    local widthBorder = 600
+    local Width = 0
+
+    local lines = {}
+    for line in lable:gmatch("[^\r\n]+") do
+        table.insert(lines, line)
+    end
+
+    local size = 0
+    if lines[2] ~= nil then
+        for _, line in pairs(lines) do
+            if size < #line then size = #line end
+        end
+        lableSize = size
+    end
+
+
+    for i=1, lableSize, 1 do
+        Width = Width + adjust_Width
+    end
+    Width = Width + widthBorder
+
+    if Width < minWidth then
+        Width = minWidth
+    end
+    return Width
+end

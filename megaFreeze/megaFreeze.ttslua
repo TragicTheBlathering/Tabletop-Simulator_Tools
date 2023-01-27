@@ -1,0 +1,35 @@
+local onModLoad=require("/_libs/onModLoad/onModLoad")
+local hexC=require("/_libs/stringUtils/stringColours")
+
+function onload()
+    buttonLable = "MegaFreeze\n<non-interactable>"
+    buttoncolour = "Red"
+    MakeButtons()
+end
+
+
+function b_Function(buttonobj, player_clicker_color, alt_click)
+    printToAll(hexC.orange..'\n: MEGAFREEZE : '..hexC.yellow..'Setting all valid objects :')
+    onModLoad.MegaFreeze()
+    if buttoncolour == "Red" then
+        buttoncolour = "Green"
+        buttonLable = "MegaFreeze\n<interactable>"
+        printToAll(hexC.green..'  INTERACTABLE')
+    else
+        buttoncolour = "Red"
+        buttonLable = "MegaFreeze\n<non-interactable>"
+        printToAll(hexC.red..'  NON-INTERACTABLE')
+    end
+    self.clearButtons()
+    MakeButtons()
+end
+
+function MakeButtons(switch)
+    if switch == nil then
+        self.createButton({
+            label=buttonLable, click_function="b_Function", function_owner=self,
+            position={0,0.5,1}, rotation={0,180,0}, height=800, width=2500,
+            font_size=250, color=buttoncolour, font_color={1,1,1}
+        })
+    end
+end

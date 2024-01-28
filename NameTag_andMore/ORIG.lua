@@ -591,7 +591,7 @@ function findTagsInDescriptionOfTool()
     --local TagTool = getObjectsWithTag('tool_EditTags')[1]
     --print(TagTool.getDescription())
     local z = {add={}, remove={}, foundAdd = false, foundRemove = false, name={pos=false, n=nil}, desc={}, gm={}, foundName = false, foundDesc = false, foundGMNote = false}
-        local desc = stringtools.splitString(self.getDescription())
+        local desc = stringtools.splitString(getObjectFromGUID('1ad5f6').getDescription())
         local GMnotes = stringtools.splitString(self.getGMNotes())
         local addTagsFoundinDesc = false
 

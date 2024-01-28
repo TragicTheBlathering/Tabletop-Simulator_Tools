@@ -1,0 +1,69 @@
+-- All code by Eldin (Pieter) https://steamcommunity.com/profiles/76561198064886381/myworkshopfiles/?appid=286160
+-- Free to use.
+
+
+shape = "square"
+bagtype = "normal"
+rotate = 0
+urls = {
+  square = "http://cloud-3.steamusercontent.com/ugc/1666858152071990826/9AD455F2CBAEC01B2CBCDDB8B6DC4CE48D14B545/",
+  cylinder = "http://cloud-3.steamusercontent.com/ugc/1666858152071991282/5C391C2599AE5F6972D6EFA7BFC04B41D6E821E3/",
+  hex = "http://cloud-3.steamusercontent.com/ugc/1666858349285421330/85514136CA7CC07D1571B594321C1D3D01DC2B2C/",
+  triangle ="http://cloud-3.steamusercontent.com/ugc/1666858288775771801/9B3BE50061314478867674DFD2262D4CD3DC30A3/",
+}
+function toggle(player, value, id)
+  if value == "True" then
+    _G[self.UI.getAttribute(id, "type")] = id
+  end
+  self.UI.setAttribute(id, "icon", value=="True" and "ui_checkon" or "ui_checkoff")
+end
+
+function setRotation(player, value, id)
+  rotate = tonumber(value) * 15
+  self.UI.setAttribute("rotation", "text", "Rotation: "..tostring(rotate))
+end
+
+function doit()
+  local url, type
+  obj = nil
+  url = urls[shape]
+  if bagtype == "normal" then
+    type = 6
+  else
+    type = 7
+  end
+  local pos = self.getPosition()
+  for i,hit in pairs( Physics.cast({ origin = pos, direction = {x=0, y=1, z=0}, max_distance = 1})) do
+      if (hit.hit_object ~= self and hit.hit_object.tag ~= "Surface") then
+          obj = hit.hit_object
+      end
+  end
+  if not obj then return end
+  obj.setLock(true)
+  local bounds = obj.getBoundsNormalized()
+  local position = obj.getPosition()
+  local rotation = obj.getRotation()
+  local new_obj = spawnObject({
+    type              = "Custom_Model",
+    position          = position-bounds.offset,
+    rotation          = rotation+Vector(0, rotate, 0),
+    sound             = false,
+  })
+  new_obj.setCustomObject({
+    mesh = url,
+    type = type,
+  })
+  new_obj.setLock(true)
+  new_obj.setColorTint(Color(1, 1, 1, 0))
+  new_obj.setScale(bounds.size)
+  new_obj.addAttachment(obj)
+  new_obj.setLock(false)
+  broadcastToAll("Done", "Green")
+end
+
+function waitTime(x)
+    local time = os.clock()
+    while time + x > os.clock() do
+        coroutine.yield()
+    end
+end

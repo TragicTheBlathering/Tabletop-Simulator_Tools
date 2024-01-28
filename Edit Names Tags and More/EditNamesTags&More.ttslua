@@ -1,0 +1,1457 @@
+--******************************************************************************
+--*** Variables needed throughout the entire obj Script (sudo global) **********
+--******************************************************************************
+local ShowCast = false
+local hexC = {black  = '['..Color.black:toHex(false)..']',
+              blue   = '['..Color.blue:toHex(false)..']',
+              brown  = '['..Color.brown:toHex(false)..']',
+              green  = '['..Color.green:toHex(false)..']',
+              grey   = '['..Color.grey:toHex(false)..']',
+              orange = '['..Color.orange:toHex(false)..']',
+              pink   = '['..Color.pink:toHex(false)..']',
+              purple = '['..Color.purple:toHex(false)..']',
+              red    = '['..Color.red:toHex(false)..']',
+              teal   = '['..Color.teal:toHex(false)..']',
+              white  = '['..Color.white:toHex(false)..']',
+              yellow = '['..Color.yellow:toHex(false)..']',
+              close  = '[-]'}
+local TagTarget = {}
+local Wait_ids = {}
+local Edit_FuncTable  = {}
+local ButtonsCols = {}
+local ButtonsData = {}
+local AllObjectData = {error = false, newObjData = {}, oldObjData = {}}
+--******************************************************************************
+--*** Main Function Cascade ****************************************************
+--******************************************************************************
+function b_func_ProcessNoteCards(obj, playercolor, alt_click)
+    if not alt_click then
+        AllObjectData.error = false
+        local notepadData = findNoteCard_Platforms()
+        local valid = {}
+        --print('------------------')
+        if notepadData.found then
+            printToAll(hexC.yellow..'\n--- Processing Objects on Tool --------------------')
+            --printToAll(hexC.green..'Procssing : '..hexC.yellow..'Objects on Tool.')
+
+            notepadData = processFound_NoteCards(notepadData)
+            AllObjectData.oldObjData = cast(self, 'mainTool', '', Vector(15.8,5,15.8))
+            --print(logString(AllObjectData, '\n------- AllObjectData -------'))
+
+            if not AllObjectData.error then
+                build_newObjData(notepadData)
+                SpawnUsing_newObjData()
+            end
+            printToAll(hexC.yellow..'Finished ------------------------------------------\n')
+        else
+            AllObjectData.error = true
+            printToAll(hexC.red..'-------------------------------------------------')
+            printToAll(hexC.red..'Error : '..hexC.yellow..'Use only 1 copy of each platform type.')
+            for k,v in pairs(notepadData.errorList) do
+                printToAll(hexC.pink..'Object : '..hexC.orange..k..' : '..hexC.pink..'Copies : '..hexC.orange..v)
+            end
+            printToAll(hexC.red..'Fix : '..hexC.yellow..'Use the bag button to delete these platforms and try again')
+            printToAll(hexC.red..'-------------------------------------------------')
+        end
+    else
+        local obj = getObjectFromGUID(self.getDescription())
+        if obj then
+            print(logString(obj.getData(), '\n----- Data of Object : '..self.getDescription()..' -----'))
+        end
+    end
+end
+--******************************************************************************
+--*** Edit SNAP TAGS  **********************************************************
+--******************************************************************************
+
+function b_func_tagScriptZone()
+    local targets = {objs = {}, zones = {}, ofound = false, zfound = false}
+    local objects = {}
+    for k,zone in pairs(getObjectsWithTag('tagTool_ScriptZone')) do
+        targets.zfound = true
+        table.insert(targets.zones, zone)
+        for k,o in pairs(zone.getObjects(true)) do
+            targets.ofound = true
+            objects[o] = o
+        end
+    end
+    for k,o in pairs(objects) do
+        table.insert(targets.objs, o)
+    end
+
+    if snapsTargetsFound(targets) then
+        local tagsList, found = setTagsforSnaps()
+        if found then
+            findBoundingBox(targets, tagsList)
+        end
+        printSnapResults(tagsList)
+    end
+end
+
+function printSnapResults(tagsList)
+    local action = ButtonsData.tagName
+    if action == 'Clear' then
+        broadcastToAll(hexC.orange..'All'..hexC.yellow..' Snaps'..hexC.orange..' found inside'..hexC.yellow..' Zone'..hexC.orange..' have been : '..hexC.green..'CLEARED')
+
+    elseif action == 'Replace' then
+        if tagsList.TagList.add[1] then
+            broadcastToAll(hexC.orange..'All'..hexC.yellow..' Snaps'..hexC.orange..' found inside'..hexC.yellow..' Zone'..hexC.orange..' have been : '..hexC.green..'REPLACED')
+            print(logString(tagsList.TagList.add, '---- Tags Added to Snaps ----'))
+        else
+            printToAll(hexC.red..'ERROR : '..hexC.white..'No tags to use for reaplce found on NoteCard')
+        end
+
+    elseif action == 'Add' then
+        if tagsList.TagList.add[1] then
+            print('!!!')
+            printToAll(hexC.orange..'All'..hexC.yellow..' Snaps'..hexC.orange..' found inside'..hexC.yellow..' Zone'..hexC.orange..' have had their existing tags : '..hexC.green..'ADDED TO')
+            print(logString(tagsList.TagList.add, '---- Tags Added to Snaps ----'))
+        else
+            printToAll(hexC.red..'ERROR : '..hexC.white..'No tags to add found on NoteCard')
+        end
+
+    elseif action == 'Remove' then
+        if tagsList.TagList.remove[1] then
+            broadcastToAll(hexC.orange..'All'..hexC.yellow..' Snaps'..hexC.orange..' found inside'..hexC.yellow..' Zone'..hexC.orange..' have had some tags : '..hexC.green..'REMOVED')
+            print(logString(tagsList.TagList.remove, '---- Tags Removed from Snaps ----'))
+        else
+            printToAll(hexC.red..'ERROR : '..hexC.white..'No tags to remove found on NoteCard')
+        end
+    end
+
+end
+
+
+function setTagsforSnaps()
+    local type = 'NameTag_Tags'
+    local tags = nil
+    local plat = getObjectsWithTag(type)[1]
+        if plat then
+            tags = cast(plat, 'noteCard', type)
+            --print(logString(tags, '---- TAGS ----'))
+        end
+
+    if not tags then
+        return tags, false
+    else
+        if not tags.TagList.add[1] and not tags.TagList.remove[1] then
+            local found = false
+            if ButtonsData.tagName == 'Clear' then
+                found = true
+            end
+            return tags, found
+        end
+    end
+
+    return tags, true
+end
+
+function findBoundingBox(targets, tags)
+    --print(logString(tags, '\n--- findBoundingBox ----'))
+    for _,o in pairs(targets.objs) do
+        for k,z in pairs(targets.zones) do
+            setSnapTags(o,z, tags)
+        end
+    end
+    return nil
+end
+
+function setSnapTags(obj,zone, tagsList)
+
+    --print(logString(tagsList.TagList.add, '\n---- setSnapTags.add ----'))
+
+    local action = ButtonsData.tagName
+
+    local zBounds = getZBounds(zone)
+    local areaOffset = (Vector(divide_preserveSign(zBounds.size.x, 2), divide_preserveSign(zBounds.size.y, 2), divide_preserveSign(zBounds.size.z, 2)))
+
+    local zoneArea_WorldPoints = {upperLeft  = Vector(zone.getPosition().x - areaOffset.x, 5, zone.getPosition().z + areaOffset.z),
+    lowerRight = Vector(zone.getPosition().x + areaOffset.x, 5, zone.getPosition().z - areaOffset.z)}
+
+    local snaps = obj.getSnapPoints()
+    for i, snap in ipairs(snaps) do
+        local snapPosLocal = snap.position
+        local snapPosWorld = obj.positionToWorld( snapPosLocal )
+
+        --local testSnapPos = spawnObject({type='BlockSquare', position=Vector(snapPosWorld.x, 5, snapPosWorld.z)})
+
+        if insideArea(snapPosWorld, zoneArea_WorldPoints) then
+            local snapTags = snaps[i].tags
+            if action == 'Clear' then
+                snaps[i].tags = {}
+                --print('CLEAR TAGS')
+                --broadcastToAll(hexC.orange..'All'..hexC.yellow..' Snaps'..hexC.orange..' found inside'..hexC.yellow..' Zone'..hexC.orange..' have been : '..hexC.green..'CLEARED')
+
+            elseif action == 'Replace' then
+                if tagsList.TagList.add[1] then
+                    snaps[i].tags = tagsList.TagList.add
+                    --broadcastToAll(hexC.orange..'All'..hexC.yellow..' Snaps'..hexC.orange..' found inside'..hexC.yellow..' Zone'..hexC.orange..' have been : '..hexC.green..'REPLACED')
+                    --print(logString(tagsList.TagList.add, '---- Tags Added to Snaps ----'))
+                else
+                    --printToAll(hexC.red..'ERROR : '..hexC.white..'No tags to use for reaplce found on NoteCard')
+                end
+
+            elseif action == 'Add' then
+                if tagsList.TagList.add[1] then
+                    for k, t in pairs(tagsList.TagList.add) do
+                        table.insert(snaps[i].tags, t)
+                    end
+                    --printToAll(hexC.orange..'All'..hexC.yellow..' Snaps'..hexC.orange..' found inside'..hexC.yellow..' Zone'..hexC.orange..' have had their existing tags : '..hexC.green..'ADDED TO')
+                    --print(logString(tagsList.TagList.add, '---- Tags Added to Snaps ----'))
+                else
+                    --printToAll(hexC.red..'ERROR : '..hexC.white..'No tags to add found on NoteCard')
+                end
+
+            elseif action == 'Remove' then
+                if tagsList.TagList.remove[1] then
+                    local new = {}
+                    for k,otag in pairs (snaps[i].tags) do
+                        for k, ntag in pairs(tagsList.TagList.remove) do
+                            if string.lower(otag) ~= string.lower(ntag) then
+                                table.insert(new, otag)
+                            end
+                        end
+                    end
+                    snaps[i].tags = new
+                    --broadcastToAll(hexC.orange..'All'..hexC.yellow..' Snaps'..hexC.orange..' found inside'..hexC.yellow..' Zone'..hexC.orange..' have had some tags : '..hexC.green..'REMOVED')
+                    --print(logString(tagsList.TagList.remove, '---- Tags Removed from Snaps ----'))
+                else
+                    --printToAll(hexC.red..'ERROR : '..hexC.white..'No tags to remove found on NoteCard')
+                end
+            end
+            table.sort(snaps[i].tags)
+        end
+    end
+    obj.setSnapPoints(snaps)
+end
+
+function insideArea(snap, area)
+    if snap.x <= area.upperLeft.x
+    or snap.z >= area.upperLeft.z
+    or snap.x >= area.lowerRight.x
+    or snap.z <= area.lowerRight.z
+    then
+        return false
+    end
+    return true
+end
+
+function divide_preserveSign(num, div)
+  local sign = num >= 0 and 1 or -1 -- determine the sign of the number
+  --local result = math.floor(math.abs(num) / div) * sign -- divide the absolute value of the number by 2 and multiply by the sign
+  local result = num / div * sign -- divide the absolute value of the number by 2 and multiply by the sign
+  return result
+end
+
+
+function getZBounds( obj )
+
+    local IS_ZONE_LOOKUP = {
+                    FogOfWar         = true,
+                    FogOfWarTrigger  = true,
+                    RandomizeTrigger = true,
+                    ScriptingTrigger = true,
+                    -- No objects for hand zone.
+                    }
+
+    function is_zone( obj )
+        return IS_ZONE_LOOKUP[ obj.name ]
+    end
+
+
+   local bounds = obj.getBounds()
+
+   if is_zone( obj ) then
+      local rotation = obj.getRotation()
+      local size =
+         obj.getScale()
+         :rotateOver( 'z', rotation.z )
+         :rotateOver( 'x', rotation.x )
+         :rotateOver( 'y', rotation.y )
+
+      bounds.size = Vector(
+         math.abs( size.x ),
+         math.abs( size.y ),
+         math.abs( size.z )
+      )
+   end
+
+   return bounds
+end
+
+function snapsTargetsFound(tar)
+    if tar.zfound then
+        if tar.ofound then
+            return true
+        else
+            printToAll(hexC.red..'Error : '..hexC.white..' Zone Found but no Object found inside it')
+        end
+    else
+        printToAll(hexC.red..'Error : '..hexC.white..' You need to draw a ScriptZone and tag it as :'..hexC.yellow..' tagTool_ScriptZone')
+    end
+    return false
+end
+
+--******************************************************************************
+--*** Edit Object Data *********************************************************
+--******************************************************************************
+
+--AllObjectData.newObjData
+--{'NameTag_NameDesc', 'NameTag_GMNotes', 'NameTag_Edit', 'NameTag_Tags', 'NameTag_ObjToggle', 'NameTag_ObjProp'}
+function build_newObjData(notepadData)
+    --print(logString(AllObjectData.oldObjData, '\n----- AllObjectData.oldObjData -----'))
+    AllObjectData.newObjData = AllObjectData.oldObjData
+
+    for type, list in pairs(AllObjectData.newObjData) do
+        if type == 'decks' or type == 'bags' then
+            --print(type)
+            printToAll(hexC.green..'Found : '..hexC.yellow..tableSize(AllObjectData.newObjData[type])..' '..type)
+            for k, container in pairs(list) do
+                if tableSize(container.ContainedObjects) > 0 then
+                    for obj, data in pairs(container.ContainedObjects) do
+                        --print(data.Name)
+                        if data.Name == 'Deck' then
+                            for obj, card in pairs(data.ContainedObjects) do
+                                edit_ObjData(card, notepadData, true)
+                            end
+                        end
+                        edit_ObjData(data, notepadData, true)
+                    end
+                end
+            end
+        end
+        if type =='objs' or type == 'decks' then
+            --print(type)
+            if type =='objs' then
+                printToAll(hexC.green..'Found : '..hexC.yellow..tableSize(AllObjectData.newObjData.objs)..' Objects')
+            end
+            for k, obj in pairs(list) do
+                edit_ObjData(obj, notepadData)
+            end
+        end
+    end
+end
+
+function SpawnUsing_newObjData()
+    printToAll(hexC.orange..'Spwawning New Objects')
+    --print(logString(AllObjectData.newObjData, '\n----- AllObjectData.newObjData -----'))
+    for _, list in pairs(AllObjectData.newObjData) do
+        for obj, data in pairs(list) do
+            local pos = Vector(data.Transform.posX, data.Transform.posY, data.Transform.posZ)+Vector(0,3,0)
+            local rot = Vector(data.Transform.rotX, data.Transform.rotY, data.Transform.rotZ)
+            local scale = Vector(data.Transform.scaleX, data.Transform.scaleY, data.Transform.scaleZ)
+            destroyObject(obj)
+            spawnObjectData({data = data, position=pos, rotation=rot, scale=scale, sound=true})
+        end
+    end
+end
+
+--TagTarget = {'NameTag_NameDesc', 'NameTag_GMNotes', 'NameTag_Edit', 'NameTag_Tags', 'NameTag_ObjToggle', 'NameTag_ObjProp'}
+function edit_ObjData(objData, notepadData, isContainer)
+    --print(logString(notepadData, '\n----- notepadData -----'))
+
+    for tag, nData in pairs(notepadData) do
+        if nData ~= false then
+            --print(logString(nData,'\n-----------------------------------'))
+            Edit_FuncTable[tag](nData, tag, objData, isContainer)
+        end
+    end
+end
+
+function Edit_NamesDesc(data, tag, objData, isContainer)
+    --print(logString(data, 'data'))
+    local switch = ButtonsData.nameName
+    if data.name ~= '' then
+        if string.lower(data.name) == 'clearfield' then
+            objData.Nickname = ''
+        else
+            if switch == 'Replace' then
+                objData.Nickname = data.name
+            elseif switch == 'Prefix' then
+                objData.Nickname = data.name..objData.Nickname
+            elseif switch == 'Suffix' then
+                objData.Nickname = objData.Nickname..data.name
+            end
+        end
+    end
+    if data.desc ~= '' then
+        if string.lower(data.desc) == 'clearfield' then
+            objData.Description = ''
+            return
+        else
+            objData.Description = data.desc
+            return
+        end
+    end
+    return
+end
+--ButtonsData = {nameName = 'Replace', tagName = 'Add', editName='N'}
+--print(ButtonsCols[tag])
+function Edit_GMNote(data, tag, objData, isContainer)
+    if data.gmn ~= '' then
+        if string.lower(data.gmn) == 'clearfield' then
+            objData.GMNotes = ''
+            return
+        else
+            objData.GMNotes = data.gmn
+            return
+        end
+    end
+end
+function Edit_Modify(data, tag, objData, isContainer)
+    local mod = data.modify
+    if ButtonsData.editName == 'N' then
+        --print('-- NAME -----------------------------------')
+        objData.Nickname = replaceSubString(objData.Nickname, mod.replace, mod.newSubStr)
+
+    elseif ButtonsData.editName == 'D' then
+        --print('-- DESCRIPTION  -----------------------------------')
+        objData.Description = replaceSubString(objData.Description, mod.replace, mod.newSubStr)
+
+    elseif ButtonsData.editName == 'N+D' then
+        --print('-- NAME + DESCRIPTION -----------------------------------')
+        objData.Nickname = replaceSubString(objData.Nickname, mod.replace, mod.newSubStr)
+        objData.Description = replaceSubString(objData.Description, mod.replace, mod.newSubStr)
+
+    elseif ButtonsData.editName == 'G' then
+        --print('-- GMNOTE -----------------------------------')
+        objData.GMNotes = replaceSubString(objData.GMNotes, mod.replace, mod.newSubStr)
+
+    elseif ButtonsData.editName == 'A' then
+        --print('-- ALL -----------------------------------')
+        objData.Nickname = replaceSubString(objData.Nickname, mod.replace, mod.newSubStr)
+        objData.Description = replaceSubString(objData.Description, mod.replace, mod.newSubStr)
+        objData.GMNotes = replaceSubString(objData.GMNotes, mod.replace, mod.newSubStr)
+    end
+end
+
+function Edit_Tags(data, tag, objData, isContainer)
+    --print(logString(data, '\n------ Edit_Tags(data) -----'))
+    local newtagList = data.TagList
+    table.sort(newtagList.add)
+    if ButtonsData.tagName == 'Add' then
+        --print('-- ADD -----------------------------------')
+        if not objData.Tags then -- are there no tags in data already?
+            objData.Tags = newtagList.add
+        else
+            for k, v in pairs(objData.Tags) do
+                table.insert(newtagList.add, v)
+            end
+            table.sort(newtagList.add)
+            objData.Tags = newtagList.add
+        end
+
+    elseif ButtonsData.tagName == 'Remove' then
+        local newRemoved = {}
+        --print('-- REMOVE -----------------------------------')
+        if objData.Tags then
+            for k, ot in pairs(objData.Tags) do
+                for _, rt in pairs(newtagList.remove) do
+                    if string.lower(ot) == string.lower(rt) then
+                        --rint(ot)
+                    else
+                        table.insert(newRemoved, ot)
+                    end
+                end
+            end
+            table.sort(newRemoved)
+            objData.Tags = newRemoved
+        end
+
+    elseif ButtonsData.tagName == 'Replace' then
+        --print('-- REPLACE -----------------------------------')
+        objData.Tags = newtagList.add
+
+    elseif ButtonsData.tagName == 'Clear' then
+        --print('-- Clear -----------------------------------')
+        if objData.Tags then
+            objData.Tags = {}
+        end
+    end
+    --print(logString(objData, '\n------ objData -----'))
+end
+
+function Edit_Togs(data, tag, objData, isContainer)
+    for oKey, _ in pairs(objData) do
+        for eKey, d in pairs(data) do
+            if oKey == eKey then
+                objData[oKey] = d
+            end
+        end
+    end
+end
+
+function Edit_Props(data, tag, objData, isContainer)
+    for key, value in pairs(data.Props) do
+        if tostring(value) == 'true' or tostring(value) == 'false' then
+            editTable_recursiveStringKey(objData, key, stringToBool(value))
+        else
+            editTable_recursiveStringKey(objData, key, value)
+        end
+    end
+end
+
+--******************************************************************************
+--*** Data Extraction **********************************************************
+--******************************************************************************
+--------------------------------------------------------------------------------
+-- Find all the platforms in the scene.
+-- Return any cards objs found on them.
+-- Also switch all the buttons for platforms that do not exist or do not have cards to red.
+function processFound_NoteCards(notepadData)
+    local buttonChange = {}--{green = 'Red', red = 'Green'}
+
+    for bTag, col in pairs(ButtonsCols) do
+        local found = {}
+        found[bTag] = false
+        for pTag, plat in pairs(notepadData.platforms) do
+            if bTag == pTag then
+                found[bTag] = true
+                --print(pTag..' : '..red)
+                if col == 'Green' then
+                    buttonChange[bTag] = true
+                else
+                    buttonChange[bTag] = false
+                end
+                notepadData.platforms[bTag] = {switch = red, obj = plat}
+            end
+        end
+        if not found[bTag] then
+            --print('M : '..bTag..' : '..red)
+            buttonChange[bTag] = false
+            notepadData.platforms[bTag] = {switch = red, obj = false}
+        end
+    end
+
+    local data_NoteCards = {}
+    for tag, platform in pairs(notepadData.platforms) do
+        if platform.obj then
+            local obj = platform.obj
+            data_NoteCards[tag] = cast(obj, 'noteCard', tag, Vector(1,1,1))
+            if not data_NoteCards[tag] then
+                buttonChange[tag] = false
+            end
+        else
+            buttonChange[tag] = false
+            data_NoteCards[tag] = false
+        end
+    end
+
+
+    for tag, found in pairs(buttonChange) do
+        if found == true then
+            ButtonsCols[tag] = 'Green'
+        else
+            data_NoteCards[tag] = false
+            ButtonsCols[tag] = 'Red'
+        end
+    end
+    --print(logString(data_NoteCards, '----- data_NoteCards -----'))--------------------------------------------------------------------------------
+    -- Clear and Rebuild Buttons. For fucks sake... LEARRN XML you lazy cunt!
+    self.clearButtons()
+    MakeButtons()
+    return data_NoteCards
+end
+
+function findNoteCard_Platforms() -- Seacrh Platforms for Tags used by mod and return
+    local objList = {}
+    local proceed = {found = true, errorList = {}, platforms = {}}
+
+    for k,tag in pairs(TagTarget) do
+        objList[tag] = getObjectsWithTag(tag)
+        if objList[tag][1] then
+            proceed.platforms[tag] = objList[tag][1]
+        end
+    end
+
+    for k,v in pairs(objList) do
+        --print(k..' :'..#v)
+        if #v > 1 then
+            proceed.found = false
+            proceed.errorList[v[1].getName()] = #v
+        end
+    end
+    return proceed
+end
+
+function cast(target,switch, tag, vec)
+    vec = vec or Vector(1,1,1)
+    local platform = {size={}, posOffset={}}
+    if switch == 'noteCard' then
+        --print('notepad')
+        platform = {size=vec, posOffset=Vector(0, 0.85, 0)}
+    else
+        platform = {size=vec, posOffset=Vector(0, 2.85, 0)}
+    end
+
+    local size = platform.size
+    local zone = Physics.cast({ origin=target.getPosition() + platform.posOffset,
+                                direction={0,1,0},
+                                type=3,
+                                max_distance=0,
+                                size=size,
+                                debug=ShowCast})
+    return processCast(zone, switch, tag)
+end
+--TagTarget = {'NameTag_NameDesc', 'NameTag_GMNotes', 'NameTag_Edit', 'NameTag_Tags', 'NameTag_ObjToggle', 'NameTag_ObjProp'}
+function processCast(zone, switch, tag)
+    if switch == 'noteCard' then
+        local z = {found = false, data = {}}
+        for k,o in pairs(zone) do
+            if o.hit_object.type == 'Notecard' then
+                local cardData = o.hit_object.getData()
+                z.found = true
+                --print('------------------------------------------------------'..tag)
+                if tag == 'NameTag_NameDesc' then
+                    z.data.name = cardData.Nickname
+                    z.data.desc = cardData.Description
+
+                elseif tag == 'NameTag_GMNotes' then
+                    z.data.gmn = cardData.Description
+
+                elseif tag == 'NameTag_ObjToggle' then
+                    z.data.Locked = cardData.Locked
+                    z.data.DragSelectable = cardData.DragSelectable
+                    z.data.Snap = cardData.Snap
+                    z.data.Grid = cardData.Grid
+                    z.data.Autoraise = cardData.Autoraise
+                    z.data.Sticky = cardData.Sticky
+                    z.data.Hands = cardData.Hands
+                    z.data.HideWhenFaceDown = cardData.HideWhenFaceDown
+                    z.data.IgnoreFoW = cardData.IgnoreFoW
+                    z.data.MeasureMovement = cardData.MeasureMovement
+                    z.data.Tooltip = cardData.Tooltip
+                    z.data.GridProjection = cardData.GridProjection
+                    if cardData.FogOfWarRevealer ~= nil then
+                        z.data.FogOfWarRevealer = cardData.FogOfWarRevealer
+                    end
+                    --print('----- TYPE : '..type(cardData.Locked))
+                    --z.data.Persistant = cardData.Persistant
+
+                elseif tag == 'NameTag_ObjProp' then
+                    z.data.Props = extract_Properties(splitString(cardData.Description))
+
+                elseif tag == 'NameTag_Edit' then
+                    z.data.modify = {}
+                    z.data.modify.replace = cardData.Nickname
+                    z.data.modify.newSubStr = cardData.Description
+
+                elseif tag == 'NameTag_Tags' then
+                    z.data.TagList = extract_Tags(splitString(cardData.Description))
+                    --print(logString(cardData.Description, '----- cardData -----'))
+                    --print(logString(z.data.Props, '----- z.data.Props -----'))
+                    --print(logString(properties, '----- properties -----'))
+                end
+                z.data.obj = o.hit_object
+            end
+        end
+
+        if z.found then
+            --print('FOUND')
+            return z.data
+        else
+            --print('NO')
+            return false
+        end
+
+    elseif switch == 'mainTool' then
+        local data = {objs = {}, bags = {}, decks = {}}
+        for k,o in pairs(zone) do
+            local obj = o.hit_object
+            if (obj ~= self) and (obj.type ~= 'Surface') then
+
+                if obj.type == 'Bag' then
+                    data.bags[obj] = obj.getData()
+                    --table.insert(data.bags , obj.getData())
+                elseif obj.type == 'Deck' then
+                    data.decks[obj] = obj.getData()
+                    --table.insert(data.decks , obj.getData())
+                else
+                    data.objs[obj] = obj.getData()
+                    --table.insert(data.objs , obj.getData())
+                end
+            end
+        end
+        if tableSize(data.bags) == 0 and tableSize(data.decks) == 0 and tableSize(data.objs) == 0 then
+            printToAll(hexC.red..'ERROR : '..hexC.white..'There are no objects on the tool!')
+            AllObjectData.error = true
+            return data
+        else
+            return data
+        end
+    end
+end
+
+function extract_Tags(data)
+    local list = {add = {}, remove = {}}
+    for k,line in pairs(data) do
+        if line:sub(1, 2) ~= '--' then
+            --local key, value = splitAtFirstNonOccurrence(line, ':')
+            local split = useFirstOnly(splitString(line, ':'))
+            local key = split[1]
+            local value = split[2]
+            if string.lower(key) == 'add' then
+                table.insert(list.add, value)
+            elseif string.lower(key) == 'remove' then
+                table.insert(list.remove, value)
+            end
+        end
+    end
+    return list
+end
+
+function extract_Properties(data)
+    --print(logString(data, '----- data -----'))
+    local list = {}
+    for k,line in pairs(data) do
+        if line:sub(1, 2) ~= '--' then
+            local split = useFirstOnly(splitString(line, ':'))
+            --print(logString(split, '\n----- split -----'))
+            local key, value = split[1], split[2]
+            if string.lower(key) == 'scale' then
+                value = findVectorFrom_string(value)
+                list.scaleX = value.x
+                list.scaleY = value.y
+                list.scaleZ = value.z
+            else
+                list[key] = value
+            end
+            --print(logString(split, '----- split -----'))
+        end
+    end
+    --print(logString(list, '----- list -----'))
+    return list
+end
+
+function useFirstOnly(stringList)
+    local nStr = ''
+    if #stringList > 2 then
+        for i = 2,#stringList,1 do
+            nStr = nStr..stringList[i]
+            if i < #stringList then
+                nStr = nStr..':'
+            end
+            --print(logString(stringList, '\n----- stringList -----'))
+        end
+        return {stringList[1],nStr}
+    else
+        return stringList
+    end
+end
+
+--******************************************************************************
+--*** TOOLS ********************************************************************
+--******************************************************************************
+--------------------------------------------------------------------------------
+--- Table Tools ----------------------------------------------------------------
+function tableSize(t)
+    if t then
+        local count = 0
+        for key,value in pairs(t) do count = count + 1 end
+        return count
+    else
+        return 0
+    end
+end
+
+function testTable_identicalValues(t)
+    local first = t[1]
+     for i = 2, #t do
+         if t[i] ~= first then
+             return false
+         end
+     end
+     return true
+end
+
+function editTable_recursiveStringKey(tbl, key, newValue)
+  for k, v in pairs(tbl) do
+    if type(v) == "table" then
+      if editTable_recursiveStringKey(v, key, newValue) then
+        return true
+      end
+    else
+      if type(k) == "string" and string.lower(k) == string.lower(key) then
+        tbl[k] = newValue
+        return true
+      end
+    end
+  end
+  return false
+end
+
+--------------------------------------------------------------------------------
+--- String Tools ---------------------------------------------------------------
+function splitString(str, b1, b2)
+    local z = {}
+        if not str then
+            printToAll('splitString(str, sep, b1, b2) : Must Provide a string (at least)', 'Red')
+        else
+            -- split at NEW LINE
+            if not b1 and not b2 then
+                for s in str:gmatch("[^\r\n]+") do
+                    table.insert(z, s)
+                end
+            else
+            -- split at SEPERATOR
+                if b1 and not b2 then
+                    if b1 == '' then b1 = ' ' end
+                    for s in string.gmatch(str, "([^"..'%'..b1.."]+)") do
+                        table.insert(z, s)
+                    end
+            -- split Between
+                elseif b1 and b2 then
+                    for s in string.gmatch(str, '%'..b1..'(.-)%'..b2) do
+                        table.insert(z, s)
+                    end
+                end
+            end
+        end
+    return z
+end
+
+function findVectorFrom_string(s)
+    if s:sub(1, 1) ~= '{' then -- Test 1st char to see if it is a {
+        local vec = splitString(s, ',')
+        for k,v in ipairs(vec) do
+            vec[k] = v:gsub("%s+", "") -- remove any whote spaces in number
+        end
+        return Vector(vec[1], vec[2], vec[3])
+    else
+        local vec = splitString(s:sub(2, -2), ',')
+        for k,v in ipairs(vec) do
+            vec[k] = v:gsub("%s+", "") -- remove any whote spaces in number
+        end
+        return Vector(vec[1], vec[2], vec[3])
+    end
+end
+
+function cleanString(str)
+  -- Check for leading or trailing white spaces or newline character
+  if string.match(str, "^%s") or string.match(str, "%s$") or string.match(str, "%c") then
+    -- Remove leading and trailing white spaces and new line character
+    str = string.gsub(str, "^%s+", "")
+    str = string.gsub(str, "%s+$", "")
+    str = string.gsub(str, "%c", "")
+  end
+  return str
+end
+
+function stringToBool(str)
+  if type(str) == "string" then
+    if str:lower() == "true" then
+      return true
+    elseif str:lower() == "false" then
+      return false
+    end
+  end
+  return false
+end
+
+function removeWhiteSpace(s)
+   return s:gsub("%s+", "")
+end
+
+function replaceSubString(str, subStrOrig, subStrNew)
+    local pattern = subStrOrig:gsub("[%(%)%.%%%+%-%*%?%[%]%^%$]", "%%%0") -- escape special characters in subStrOrig
+    return str:gsub(pattern, subStrNew)
+end
+
+function splitAtFirstNonOccurrence(str, delimiter)
+    local delimiterPos = string.find(str, delimiter, 1, true) -- search for delimiter from the beginning of the string
+
+    if not delimiterPos then
+        return str
+    end
+
+    local left = string.sub(str, 1, delimiterPos - 1)
+    local right = string.sub(str, delimiterPos + 1)
+
+    -- Check if the first character of the right substring is the same as the delimiter.
+    -- If so, remove it from the right substring.
+    if string.sub(right, 1, 1) == delimiter then
+        right = string.sub(right, 2)
+    end
+
+    return removeSpecialChars(left), removeSpecialChars(right)
+end
+
+function removeSpecialChars(str)
+  str = string.gsub(str, "[%W\n%s]", "")
+  return str
+end
+--------------------------------------------------------------------------------
+--- Wait Tools -----------------------------------------------------------------
+function countClicks(obj,func,delay)
+    --print('IN : waitUtils.countClicks')
+    local delay = delay or 0.8 -- better way of setting default parameters
+    Wait_ids[obj] = Wait_ids[obj] or { -- just to be sure there's no attempt to index a nil value later we set an empty table first.
+      count = 0, -- We set the count to 0 here when the table is made
+    }
+
+    function delayCall()
+        func(Wait_ids[obj].count)
+        Wait_ids[obj].waitID = nil -- remove the wait id when the function is called
+        Wait_ids[obj].count = 0  -- We set the count to 0 here when the wait has ended due to timeout
+    end
+
+    if Wait_ids[obj].waitID then Wait.stop(Wait_ids[obj].waitID); Wait_ids[obj].waitID = nil end -- end the previous wait if it exists
+    Wait_ids[obj].waitID = Wait.time(delayCall, delay) -- make a new wait, but with _no_ count
+
+    Wait_ids[obj].count = Wait_ids[obj].count + 1 -- finally increment the click amount.
+end
+--******************************************************************************
+--*** Save / Onload ************************************************************
+--******************************************************************************
+function onSave()
+    if tableSize(ButtonsCols) == 0 then saved_data = "" return saved_data
+    else
+        local data_to_save = { bCol=ButtonsCols, bData=ButtonsData, tTar=TagTarget}
+        saved_data = JSON.encode(data_to_save)
+        --
+        --saved_data = "" --Remove -- at start + save to clear save data
+        return saved_data
+    end
+end
+
+function onload(saved_data)
+    if saved_data ~= "" then
+        local loaded_data = JSON.decode(saved_data)
+        --Set up information off of loaded_data
+        TagTarget = loaded_data.tTar
+        ButtonsCols = loaded_data.bCol
+        ButtonsData = loaded_data.bData
+    else
+        --Set up information for if there is no saved saved data
+        TagTarget = {'NameTag_NameDesc', 'NameTag_GMNotes', 'NameTag_Edit', 'NameTag_Tags', 'NameTag_ObjToggle', 'NameTag_ObjProp'}
+        ButtonsCols = {}
+        for k,v in pairs(TagTarget) do
+            ButtonsCols[v] = 'Green'
+        end
+        ButtonsData = {nameCol = 'Pink', nameName = 'Replace', tagAdd = 'Pink', tagName = 'Add', setAll = 'Green', editCol = 'Pink', editName='N', tagScriptZone = 'Z'}
+    end
+
+    Edit_FuncTable[TagTarget[1]] = Edit_NamesDesc
+    Edit_FuncTable[TagTarget[2]] = Edit_GMNote
+    Edit_FuncTable[TagTarget[3]] = Edit_Modify
+    Edit_FuncTable[TagTarget[4]] = Edit_Tags
+    Edit_FuncTable[TagTarget[5]] = Edit_Togs
+    Edit_FuncTable[TagTarget[6]] = Edit_Props
+
+    if not self.getScale():equals(Vector(1, 1, 1)) then self.setScale(Vector(1, 1, 1)) end
+    BuildHotKeys()
+    MakeButtons()
+end
+--******************************************************************************
+--*** Spawn Buttons ************************************************************
+--******************************************************************************
+--------------------------------------------------------------------------------
+-- Spawn Bags on Tool ----------------------------------------------------------
+function b_func_SpawnBags(obj, playercolor, alt_click)
+    if not alt_click then
+        countClicks(self,spawnBags, 0.4)
+    else
+        spawnBags(20)
+    end
+end
+
+function spawnBags(clickCount)
+    if clickCount > 20 then clickCount = 20 end
+    local bagCount = 'Bag'; if clickCount > 1 then bagCount = 'Bags' end
+    printToAll('\nSpawning '..clickCount..' '..bagCount, 'Orange')
+
+    local OffSet = Vector(-7.5,2,5.5)
+    local horizontal_spill = 0
+    for i=1, clickCount, 1 do
+        horizontal_spill = horizontal_spill + 1
+        OffSet:sub(Vector(-3,0,0))
+        if horizontal_spill > 4 then
+            OffSet:sub(Vector(12,0,2.75))
+            horizontal_spill = 1
+        end
+
+        local spawnedBag = spawnObject({
+                type = 'Bag',
+                position = self.getPosition()+OffSet,
+                scale = {1, 1, 1},
+                sound = true,
+            })
+        spawnedBag.setName('Edit Tags Bag '..i)
+        spawnedBag.setDescription('Place Objects, Bags or Decks in this bag to edit the tags based on the Description of the SET TAGES TOOL')
+    end
+end
+--------------------------------------------------------------------------------
+-- Spawn Platforms -------------------------------------------------------------
+function b_func_SpawnPlatforms(obj, playercolor, alt_click)
+    --{'NameTag_NameDesc', 'NameTag_GMNotes', 'NameTag_Edit', 'NameTag_Tags', 'NameTag_ObjToggle', 'NameTag_ObjProp'}
+    if not alt_click then
+        local adjust = {
+         Vector(-11.5, 0, 6)
+        ,Vector(-11.5, 0, 0)
+        ,Vector(-11.5, 0, -6)
+        ,Vector(11.5, 0, 6)
+        ,Vector(11.5, 0, 0)
+        ,Vector(11.5, 0, -6)}
+
+        toolData = self.getData()
+        toolData.GMNotes = ''
+        toolData.Memo = ''
+        toolData.LuaScript = ''
+        toolData.Tooltip = true
+        toolData.Tags = {}
+
+        local pos = self.getPosition()
+        local rot = self.getRotation()
+        local scale = Vector(0.35, 1, 0.25)
+
+        for i,t in ipairs(TagTarget) do
+            local objs = getObjectsWithTag(t)
+            for _, o in pairs(objs) do
+                destroyObject(o)
+            end
+            if t == 'NameTag_NameDesc' then
+                toolData.Nickname = 'Add Name or Description'
+                toolData.Description = 'Place NOTECARD on platform.\n\nNAME : is taken form the NAME field\nDESCRIPTON : is taken from the DESCRIPTION FIELD.\n\nThe Description is always REPLACED.\n\nThe Name can be placed as a SUFFIX, PREFIX or be REPLACED.\n\nTo CLEAR the description, enter \"ClearField\" into the field. Leaving the field Blank will just leave the existing desciprion untouched.'
+            elseif t == 'NameTag_GMNotes' then
+                toolData.Nickname = 'Add GMNotes'
+                toolData.Description = 'Place NOTECARD on platform.\n\nNAME : is ignored\nGMNotes : are taken from the DESCRIPTION FIELD.\n\nThe GMNotes is always REPLACED.\n\nnTo CLEAR the GMNotes, enter \"ClearField\" into the field. Leaving the field BLANK will leave the existing GMNotes untouched.'
+            elseif t == 'NameTag_Edit' then
+                toolData.Nickname = 'Edit existing Name or Description'
+                toolData.Description = 'Place the text to search for in the NAME and the text use to replace the found text is taken form the DESCRIPTION.'
+            elseif t == 'NameTag_Tags' then
+                toolData.Nickname = 'Add / Remove Tags.'
+                toolData.Description = 'Add a list of tags into the Description. put \"add:\" or \"remove:\" in front of each tag\n\nYou can also set a tag to be IGNORED by placing \"--\" in from of it.'
+            elseif t == 'NameTag_ObjToggle' then
+                toolData.Nickname = 'Copy Toggles'
+                toolData.Description = 'Set the TOGGLES of the NOTECARD and it will copy those Toggles to the found objects on the Tool.'
+            elseif t == 'NameTag_ObjProp' then
+                toolData.Nickname = 'Edit Object Properties'
+                toolData.Description = 'This will edit the object properties.\n\nSimply put in the name of the property and a \":\" then then value. For exmaple:\n\nscale:{2,2,2}\nThickness:1'
+                end
+                local newObj = spawnObjectData({data = toolData, position=pos+adjust[i], rotation=rot, scale=scale, sound=true})
+                newObj.setSnapPoints({{position = {0, 0, 0}, rotation = {0, 0, 0},rotation_snap = true}})
+
+                newObj.setTags({t})
+            end
+    else
+        for i,t in ipairs(TagTarget) do
+            local objs = getObjectsWithTag(t)
+            for _, o in pairs(objs) do
+                destroyObject(o)
+            end
+        end
+    end
+end
+--------------------------------------------------------------------------------
+-- Spawn NoteCards -------------------------------------------------------------
+function b_func_SpwanNoteCards(obj, playercolor, alt_click)
+    if not alt_click then
+        countClicks(self,spawnNoteCards, 0.4)
+    else
+        spawnNoteCards(6)
+    end
+end
+function spawnNoteCards(n)
+    local pos = self.getPosition()+Vector(-5.56, 2, 12.26)
+    local rot = Vector(0,0,0)
+    local scale = Vector(0.75,0.75,0.75)
+    local offSet = Vector(0,0.3,0)
+
+    for i = 1,n,1 do
+        spawnObject({type='notecard', position=pos+offSet, rotation=rot, scale=scale, sound=true})
+        offSet = offSet + Vector(0,0.3,0)
+    end
+end
+--******************************************************************************
+--*** Make Buttons *************************************************************
+--******************************************************************************
+function b_func_none()end
+function MakeButtons(colour, tooltip)
+
+-- Process Button --------------------------------------------------------------
+    self.createButton({
+        label='Process NoteCards',-- tooltip="Place items to edit in a bag and place on tool",
+        click_function="b_func_ProcessNoteCards", function_owner=self,
+        position={0,0.6,-13.15}, rotation={0,180,0}, height=650, width=3500,
+        font_size=350, scale={1.4,1.4,1.4}--, color={0,0,0}, font_color={1,1,1}
+    })
+-- Name Description ------------------------------------------------------------
+    self.createButton({
+        label='Name / Desc',-- tooltip="Place items to edit in a bag and place on tool",
+        click_function="b_func_edit_NameDesc", function_owner=self,
+        position={4.5,0.6,-10.5}, rotation={0,180,0}, height=550, width=1600,
+        font_size=250, scale={1,1,1}, color=ButtonsCols.NameTag_NameDesc, font_color={1,1,1}
+    })
+        self.createButton({
+            label=ButtonsData.nameName,-- tooltip="Place items to edit in a bag and place on tool",
+            click_function="b_func_nameType", function_owner=self,
+            position={4.5,0.6,-11.6}, rotation={0,180,0}, height=550, width=1600,
+            font_size=250, scale={0.8,0.8,0.8}, color=ButtonsData.nameCol, font_color={1,1,1}
+        })
+-- GM Notes --------------------------------------------------------------------
+    self.createButton({
+        label='GM Notes',-- tooltip="Place items to edit in a bag and place on tool",
+        click_function="b_func_gmn", function_owner=self,
+        position={0,0.6,-10.5}, rotation={0,180,0}, height=550, width=1600,
+        font_size=250, scale={1,1,1}, color=ButtonsCols.NameTag_GMNotes, font_color={1,1,1}
+    })
+-- Edit Values -----------------------------------------------------------------
+    self.createButton({
+        label='Edit',-- tooltip="Place items to edit in a bag and place on tool",
+        click_function="b_func_edit", function_owner=self,
+        position={4.5,0.6,-9.25}, rotation={0,180,0}, height=550, width=1600,
+        font_size=250, scale={1,1,1}, color=ButtonsCols.NameTag_Edit, font_color={1,1,1}
+    })
+        self.createButton({
+            label=ButtonsData.editName,-- tooltip="Place items to edit in a bag and place on tool",
+            click_function="b_func_editType", function_owner=self,
+            position={6.9,0.6,-9.25}, rotation={0,180,0}, height=550, width=750,
+            font_size=250, scale={0.7,0.7,0.7}, color=ButtonsData.editCol, font_color={1,1,1}
+        })
+-- Tags ------------------------------------------------------------------------
+    self.createButton({
+        label='Tags',-- tooltip="Place items to edit in a bag and place on tool",
+        click_function="b_func_tags", function_owner=self,
+        position={-4.5,0.6,-10.5}, rotation={0,180,0}, height=550, width=1600,
+        font_size=250, scale={1,1,1}, color=ButtonsCols.NameTag_Tags, font_color={1,1,1}
+    })
+        self.createButton({
+            label=ButtonsData.tagName,-- tooltip="Place items to edit in a bag and place on tool",
+            click_function="b_func_tagType", function_owner=self,
+            position={-4.5,0.6,-11.6}, rotation={0,180,0}, height=550, width=1600,
+            font_size=250, scale={0.8,0.8,0.8}, color=ButtonsData.tagAdd, font_color={1,1,1}
+        })
+            self.createButton({
+                label=ButtonsData.tagScriptZone,-- tooltip="Place items to edit in a bag and place on tool",
+                click_function="b_func_tagScriptZone", function_owner=self,
+                position={-6.9,0.6,-10.5}, rotation={0,180,0}, height=550, width=750,
+                font_size=250, scale={0.7,0.7,0.7}, color='Yellow', font_color='Black'
+            })
+-- Object Toggles --------------------------------------------------------------
+    self.createButton({
+        label='Toggles',-- tooltip="Place items to edit in a bag and place on tool",
+        click_function="b_func_toggle", function_owner=self,
+        position={0,0.6,-9.25}, rotation={0,180,0}, height=550, width=1600,
+        font_size=250, scale={1,1,1}, color=ButtonsCols.NameTag_ObjToggle, font_color={1,1,1}
+    })
+-- Object Properties -----------------------------------------------------------
+    self.createButton({
+        label='Properties',-- tooltip="Place items to edit in a bag and place on tool",
+        click_function="b_func_prop", function_owner=self,
+        position={-4.5,0.6,-9.25}, rotation={0,180,0}, height=550, width=1600,
+        font_size=250, scale={1,1,1}, color=ButtonsCols.NameTag_ObjProp, font_color={1,1,1}
+    })
+--------------------------------------------------------------------------------
+-- Spawn Bags ------------------------------------------------------------------
+    self.createButton({
+        label='Spawn Bags', tooltip="Spawns a Bags",
+        click_function="b_func_SpawnBags", function_owner=self,
+        position={-5.5,0.6,8.9}, rotation={0,180,0}, height=550, width=2000,
+        font_size=250, scale={1,1,1}--, color={0,0,0}, font_color={1,1,1}
+    })
+-- Spawn Platforms -------------------------------------------------------------
+    self.createButton({
+        label='Spawn Platforms', tooltip="Spawns a Bags",
+        click_function="b_func_SpawnPlatforms", function_owner=self,
+        position={0,0.6,8.9}, rotation={0,180,0}, height=550, width=2000,
+        font_size=250, scale={1,1,1}--, color={0,0,0}, font_color={1,1,1}
+    })
+-- Spawn NoteCards -------------------------------------------------------------
+    self.createButton({
+        label='Spawn NoteCard',-- tooltip=printSwitch.tooltip,
+        click_function="b_func_SpwanNoteCards", function_owner=self,
+        position={5.5,0.6,8.9}, rotation={0,180,0}, height=550, width=2000,
+        color='White', font_color='Black',
+        font_size=250, scale={1,1,1}--, color={0,0,0}, font_color={1,1,1}
+    })
+end
+--------------------------------------------------------------------------------
+-- Edit Main Button Colours ----------------------------------------------------
+function buttons_editColours(buttonName)
+    if buttonName == true then
+        if ButtonsData.setAll == 'Green' then
+            for k,v in pairs(ButtonsCols) do
+                ButtonsCols[k] = 'Red'
+            end
+            ButtonsData.setAll = 'Red'
+        elseif ButtonsData.setAll == 'Red' then
+            for k,v in pairs(ButtonsCols) do
+                ButtonsCols[k] = 'Green'
+            end
+            ButtonsData.setAll = 'Green'
+        end
+    else
+        if ButtonsCols[buttonName] == 'Green' then ButtonsCols[buttonName] = 'Red' else ButtonsCols[buttonName] = 'Green' end
+        if testTable_identicalValues(ButtonsCols) then
+            if ButtonsCols.NameTag_Tags == 'Green' then
+                ButtonsData.setAll = 'Green'
+            else
+                ButtonsData.setAll = 'Red'
+            end
+        end
+
+    end
+    self.clearButtons()
+    MakeButtons()
+end
+
+function b_func_editType (obj, playercolor, alt_click)
+    if not alt_click then
+        if ButtonsData.editCol == 'Pink' then
+            ButtonsData.editCol = 'Orange'
+            ButtonsData.editName = 'D'
+
+        elseif ButtonsData.editCol == 'Orange' then
+            ButtonsData.editCol = 'Blue'
+            ButtonsData.editName = 'N+D'
+
+        elseif ButtonsData.editCol == 'Blue' then
+            ButtonsData.editCol = 'Teal'
+            ButtonsData.editName = 'G'
+
+        elseif ButtonsData.editCol == 'Teal' then
+            ButtonsData.editCol = 'Purple'
+            ButtonsData.editName = 'A'
+
+        elseif ButtonsData.editCol == 'Purple' then
+            ButtonsData.editCol = 'Pink'
+            ButtonsData.editName = 'N'
+--N, D, N+D, G, A
+        end
+    else
+        --print('!!!')
+    end
+    self.clearButtons()
+    MakeButtons()
+end
+-- Edit NAME OPTIONS -----------------------------------------------------------
+function b_func_nameType(obj, playercolor, alt_click)
+    --local ButtonsData = {nameCol = 'Pink', nameName = 'Replace', tagAdd = 'Pink', tagName = 'Add', setAll = 'Red'}
+    if not alt_click then
+        if ButtonsData.nameCol == 'Pink' then
+            ButtonsData.nameCol = 'Orange'
+            ButtonsData.nameName = 'Prefix'
+
+        elseif ButtonsData.nameCol == 'Orange' then
+            ButtonsData.nameCol = 'Blue'
+            ButtonsData.nameName = 'Suffix'
+
+        elseif ButtonsData.nameCol == 'Blue' then
+            ButtonsData.nameCol = 'Pink'
+            ButtonsData.nameName = 'Replace'
+        end
+    else
+        --print('!!!')
+    end
+    self.clearButtons()
+    MakeButtons()
+end
+
+-- TAG OPTIONS -----------------------------------------------------------------
+function b_func_tagType(obj, playercolor, alt_click)
+    --local ButtonsData = {tagAdd = 'Orange', tagName = 'Add', setAll = 'false'}
+    if not alt_click then
+        if ButtonsData.tagAdd == 'Pink' then
+            ButtonsData.tagAdd = 'Orange'
+            ButtonsData.tagName = 'Replace'
+
+        elseif ButtonsData.tagAdd == 'Orange' then
+            ButtonsData.tagAdd = 'Blue'
+            ButtonsData.tagName = 'Remove'
+
+        elseif ButtonsData.tagAdd == 'Blue' then
+            ButtonsData.tagAdd = 'Purple'
+            ButtonsData.tagName = 'Clear'
+
+        elseif ButtonsData.tagAdd == 'Purple' then
+            ButtonsData.tagAdd = 'Pink'
+            ButtonsData.tagName = 'Add'
+        end
+    else
+        --print('!!!') Clear
+    end
+    self.clearButtons()
+    MakeButtons()
+end
+--------------------------------------------------------------------------------
+-- Actual Button Functions to Edit the Colours  --------------------------------
+function b_func_edit_NameDesc(obj, playercolor, alt_click)
+    if not alt_click then
+        buttons_editColours('NameTag_NameDesc')
+    else
+        buttons_editColours(true)
+    end
+end
+
+function b_func_gmn(obj, playercolor, alt_click)
+    if not alt_click then
+        buttons_editColours('NameTag_GMNotes')
+    else
+        buttons_editColours(true)
+    end
+end
+
+function b_func_tags(obj, playercolor, alt_click)
+    if not alt_click then
+        buttons_editColours('NameTag_Tags')
+    else
+        buttons_editColours(true)
+    end
+end
+
+function b_func_edit(obj, playercolor, alt_click)
+    if not alt_click then
+        buttons_editColours('NameTag_Edit')
+    else
+        buttons_editColours(true)
+    end
+end
+
+function b_func_toggle(obj, playercolor, alt_click)
+    if not alt_click then
+        buttons_editColours('NameTag_ObjToggle')
+    else
+        buttons_editColours(true)
+    end
+end
+
+function b_func_prop(obj, playercolor, alt_click)
+    if not alt_click then
+        buttons_editColours('NameTag_ObjProp')
+    else
+        buttons_editColours(true)
+    end
+end
+
+--******************************************************************************
+--*** Hot Key Stuff ************************************************************
+--******************************************************************************
+function BuildHotKeys()
+    addHotkey("Tags_Print",hot_PrintTags , false)
+    addHotkey("Tags_CLEAR",hot_ClearTags , false)
+    addHotkey("Toggle ToolTip",hot_ToggleToolTips , false)
+    addHotkey("Tags_ADD",hot_AddTags , false)
+    addHotkey("Tags_REPLACE",hot_ReplaceTags , false)
+    addHotkey("Tags_REMOVE",hot_RemoveTags , false)
+end
+
+function hot_RemoveTags(playerColor, object, pointerPosition, isKeyUp)
+    local objString = tostring(object)
+    local nameString = object.getName()
+    if nameString == '' then
+        nameString = '<No Name>'
+    end
+    printToAll('\n'..objString,'Orange')
+    printToAll(' Object Name : '..nameString, 'Yellow')
+
+    local type = 'NameTag_Tags'
+    local plat = getObjectsWithTag(type)[1]
+    if plat then
+        local tags = cast(plat, 'noteCard', type)
+        local newTags = tags.TagList.remove
+
+        table.sort(newTags)
+        for k,v in ipairs(newTags) do
+            printToAll(' '..k..' : '..v)
+            object.removeTag(v)
+        end
+    end
+end
+
+function hot_ReplaceTags(playerColor, object, pointerPosition, isKeyUp)
+    local objString = tostring(object)
+    local nameString = object.getName()
+    if nameString == '' then
+        nameString = '<No Name>'
+    end
+    printToAll('\n'..objString,'Orange')
+    printToAll(' Object Name : '..nameString, 'Yellow')
+
+    local type = 'NameTag_Tags'
+    local plat = getObjectsWithTag(type)[1]
+    if plat then
+        local tags = cast(plat, 'noteCard', type)
+        local newTags = tags.TagList.add
+
+        table.sort(newTags)
+        for k,v in ipairs(newTags) do
+            printToAll(' '..k..' : '..v)
+        end
+
+        object.setTags(newTags)
+    end
+end
+
+function hot_AddTags(playerColor, object, pointerPosition, isKeyUp)
+    local objString = tostring(object)
+    local nameString = object.getName()
+    if nameString == '' then
+        nameString = '<No Name>'
+    end
+    printToAll('\n'..objString,'Orange')
+    printToAll(' Object Name : '..nameString, 'Yellow')
+
+    local type = 'NameTag_Tags'
+    local plat = getObjectsWithTag(type)[1]
+    if plat then
+        local tags = cast(plat, 'noteCard', type)
+        local oldTags = object.getTags()
+        local newTags = tags.TagList.add
+
+        table.sort(newTags)
+        for k,v in ipairs(newTags) do
+            printToAll(' '..k..' : '..v)
+        end
+
+        for k, oldTag in pairs(oldTags) do
+            table.insert(newTags, oldTag)
+        end
+        table.sort(newTags)
+        object.setTags(newTags)
+    end
+end
+
+function hot_ClearTags(playerColor, object, pointerPosition, isKeyUp)
+    if object then
+        local name = object.getName()
+        if name == '' then name = tostring(object) end
+        printToAll('\n'..name, 'Orange')
+        printToAll('   Clearing All Tags', 'Red')
+        object.setTags({})
+    else
+        printToAll('ERROR : There is no Object Under the Cursor', 'Red')
+    end
+end
+
+function hot_PrintTags(playerColor, object, pointerPosition, isKeyUp)
+    if object then
+        local objString = tostring(object)
+        local nameString = object.getName()
+        local tags = object.getData().Tags
+
+        if nameString == '' then
+            nameString = '<No Name>'
+        end
+
+        printToAll('\n'..objString,'Orange')
+        printToAll(' Object Name : '..nameString, 'Yellow')
+        if tags then
+            table.sort(tags)
+            for k,v in ipairs(tags) do
+                printToAll(' '..k..' : '..v)
+            end
+        else
+            printToAll(' ERROR : There are no Tags on the object', 'Red')
+        end
+    end
+end
+
+function hot_ToggleToolTips(playerColor, object, pointerPosition, isKeyUp)
+    if object then
+        if object.tooltip == true then
+            object.tooltip = false
+        else
+            object.tooltip = true
+        end
+    end
+end

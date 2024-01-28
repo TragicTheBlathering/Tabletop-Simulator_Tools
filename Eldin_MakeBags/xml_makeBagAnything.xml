@@ -1,0 +1,42 @@
+<Defaults>
+  <Text color='White' fontSize='18'/>
+  <ToggleButton textAlignment="MiddleLeft" fontSize='24' preferredHeight='40' colors='#ffcc33|#ffffff|#808080|#606060' selectedBackgroundColor='#dddddd' deselectedBackgroundColor='#999999' onValueChanged="toggle"/>
+  <Button fontSize='18' preferredHeight='40' colors='#dddddd|#ffffff|#808080|#606060' />
+</Defaults>
+
+<Panel height='400' width='600' position="0 -450 0">
+  <VerticalLayout spacing='5' flexibleHeight="True" padding='5 5 5 5' color='black'>
+    <HorizontalLayout preferredHeight="30">
+      <Text preferredWidth="1000" alignment='UpperLeft' fontSize='24' text='Options' preferredHeight='40' />
+    </HorizontalLayout>
+    <VerticalLayout color='#404040' padding='10 10 10 10' spacing='5' childForceExpandHeight="False">
+      <ToggleGroup preferredHeight="160">
+        <VerticalLayout>
+          <HorizontalLayout  spacing="40">
+            <ToggleButton id="square" type="shape" minWidth="30" preferredWidth="1000" text="Square" icon='ui_checkon' isOn="True" iconAlignment="Right"/>
+            <ToggleButton id="cylinder" type="shape" minWidth="30" preferredWidth="1000" text="Cylinder" icon='ui_checkoff' iconAlignment="Right"/>
+          </HorizontalLayout>
+          <HorizontalLayout>
+            <Text>
+              Triangle is orientated point up. Hex with point side.
+              Rotate to create more fitting bag.
+            </Text>
+          </HorizontalLayout>
+          <HorizontalLayout  spacing="40">
+            <ToggleButton id="hex" type="shape" minWidth="30" preferredWidth="1000" text="Hex" icon='ui_checkoff' iconAlignment="Right"/>
+            <ToggleButton id="triangle" type="shape" minWidth="30" preferredWidth="1000" text="Triangle" icon='ui_checkoff' iconAlignment="Right"/>
+          </HorizontalLayout>
+        </VerticalLayout>
+      </ToggleGroup>
+      <Text text="Rotation: 0" id="rotation" />
+      <Slider onValueChanged='setRotation' minValue='0' maxValue="24" value="0" wholeNumbers="True" preferredHeight='40' />
+      <ToggleGroup preferredHeight="50">
+        <HorizontalLayout  spacing="40">
+          <ToggleButton id="normal" type="bagtype" minWidth="30" preferredWidth="1000" text="Normal Bag" icon='ui_checkon' isOn="True" iconAlignment="Right"/>
+          <ToggleButton id="infinite" type="bagtype" minWidth="30" preferredWidth="1000" text="Infinite Bag" icon='ui_checkoff' iconAlignment="Right"/>
+        </HorizontalLayout>
+      </ToggleGroup>
+      <Button text="Create Bag" onClick="doit"/>
+    </VerticalLayout>
+  </VerticalLayout>
+</Panel>

@@ -4,11 +4,160 @@ end
 
 function runRenameCard(drawnCard)
     --print(drawnCard.getName())
-    --local name = drawnCard.getName():sub(1, -2)
-    drawnCard.setName(drawnCard.getName():gsub("Spell", "Magical.Spell"))
-    --drawnCard.setDescription('Spell')
-    --drawnCard.setDescription('Magical Spell')
-    print(drawnCard.getName()..' : '..drawnCard.getDescription())
+    local name = drawnCard.getName()--:sub(1, -2) --(remove last char)
+    --drawnCard.setName(name:gsub("Common", "Common.Item.AH"))
+    --drawnCard.setName(name:gsub("Item", "Item.Tome.AH"))
+    --drawnCard.setName(name:gsub("Common", "Common.Item.Physical.Weapon.AH"))
+    --drawnCard.setName(name:gsub("Common", "Common.Item.Magical.Weapon.AH"))
+
+
+    --drawnCard.setName(name:gsub("Unique", "Unique.Item.AH"))
+    --drawnCard.setName(name:gsub("Unique", "Unique.Item.Tome.AH"))
+    --drawnCard.setName(name:gsub("Unique", "Unique.Item.Magical.Weapon.AH"))
+
+    --drawnCard.setName(name:gsub("Spell", "Spell.AH"))
+    --drawnCard.setName(name:gsub("Spell", "Spell.Item.Magical.AH"))
+    --drawnCard.setName(name:gsub("Spell.Item.Magical.", "Spell.Magical."))
+
+    --drawnCard.setName(name:gsub("Allies", "Ally.AH"))
+
+    --drawnCard.setName(name:sub(1, -14)..'_(Skill.MH)')
+    --drawnCard.setName(name..'_(Skill.AH.MH)')
+    --drawnCard.setName(name..'_(ExhibitE.CotDP.MH)')
+    --drawnCard.setName(name..'_(ExhibitI.CotDP.MH)')
+
+    --drawnCard.setName('Blessing / Curse')
+
+    --drawnCard.setName('Bank Loan')
+    --drawnCard.setName('Sheldon Gang Membership')
+    --drawnCard.setName('Silver Twilight Lodge Membership')
+    --drawnCard.setName('\"One of a Thousand\" Cult Membership')
+
+    --drawnCard.setName('Retainer')
+
+    --drawnCard.setName(name..'_(Corruption.Mild.BGoTW)')
+    --drawnCard.setName(name..'_(Corruption.Heavy.BGoTW)')
+
+    --drawnCard.setName(name..'_(Blight.KiY.MH)')
+
+    --drawnCard.setName(name:gsub("Injury", "Injury.DH"))--.MH"))
+    --drawnCard.setName(name:gsub("Madness", "Madness.DH"))--.MH"))
+
+    --drawnCard.setName('Blessing of Nodens_(MH_DH)')--.MH"))
+    --drawnCard.setName(name..'_(MH-BGotW)')--.MH"))
+
+    --drawnCard.setName("_(LaTT)")--.MH"))
+
+    --drawnCard.setName(name:gsub("MH.", "MH-"))--.MH"))
+
+    --drawnCard.setName("Miskatonic Univercity_(MH)")--.MH"))
+
+    --drawnCard.setName(name:gsub(".MH%)", ".MH-BGoTW)"))
+
+    --drawnCard.setName("Vision of Hypnos_(MH-KH.DH)")--.MH"))
+
+    --drawnCard.setName(name:gsub("LaTT.MH", "MH-LaTT"))--.MH"))
+    --drawnCard.setName('Dunwich Horror Combat Card_(MH-DH)')--.MH"))
+    --drawnCard.setName(name:gsub("-DH", "-KH"))--.MH"))
+    --drawnCard.setName('South Shore_(MH-KH)')--.MH"))
+
+    drawnCard.setName(name:gsub("Battle Condition", "Epic Battle"))--.MH"))
+
+-- %( %)
+
+--------------------------------------------------------------------------------
+    drawnCard.setDescription(addDescription())
+    addTagsToCard(drawnCard)
+    drawnCard.tooltip=false
+    print(drawnCard.getName())--..' : '..drawnCard.getDescription())
+end
+
+function addDescription()
+    local desc = {
+    --'Spell',
+    --'Common Item'
+    --'Unique Item'
+    --'Ally',
+    --'Skill',
+    --'Bank Loan',
+    --'   - Tome',
+    --'   - Magical Weapon',
+    --'   - Physical Weapon',
+    --'   - Magical Spell',
+    --'   - Spell',
+    --'\n(Arkham Horror)'
+    --'\n(The King in Yellow)',
+    --'\n(Innsmouth Horror)',
+    --'\n(Dunwich Horror)',
+    --'\n(Black Goat of the Woods)',
+    --'\n(The Lurker at the Threshold)',
+
+    '(Miskatonic Horror)'
+    }
+
+    local line = ''
+    for k,v in ipairs(desc) do
+        line = line..v..'\n'
+    end
+    return line
+end
+
+function addTagsToCard(c)
+    local tags = {
+    'DiscardObject',
+    --'ID_CommonItem',
+    --'ID_UniqueItem',
+    --'ID_Spell',
+    --'ID_Ally',
+    --'ID_Skill',
+    --'ID_DeputyOA',
+    --'ID_BankLoan',
+    --'ID_MemberSheldon',
+    --'ID_MemberSilver',
+    --'ID_Member1000Cult',
+    --'ID_Retainer',
+    --'ID_Condition',
+    --'ID_Injury',
+    --'ID_Madness',
+    --'ID_ExhibitEncounter',
+    --'ID_ExhibitI',
+    --'ID_Blight',
+    --'ID_BlessingOfNodens',
+    --'ID_CultEncounter',
+    --'ID_Student',
+    --'ID_Looks',
+    --'ID_Reckoning',
+    --'ID_VisionOfHypnos',
+    --'EB_Red',
+    'EB_Green',
+
+
+    --'ID_InnerBeast',
+    --'ID_ThirdEye',
+    --'ID_Madness',
+    --'ID_Corruption',
+    --'ID_StoryTask',
+    --'ID_StoryConclusion',
+    --'ID_StoryTask',
+    --'ID_Relationship',
+    --'Corruption_Mild',
+    --'Corruption_Heavy',
+    --'ID_CorruptionGREEN',
+    --'Curse',
+    --'Blessing',
+    --'Tome',
+    --'Weapon',
+    --'Physical',
+    --'Magical',
+    --'Effect',
+    --'Spell',
+    --'Upkeep_Forced',
+    --'Upkeep_May',
+    'MiskatonicHorror'
+
+    }
+    table.sort(tags)
+    c.setTags(tags)
 end
 
 --Activated by button press

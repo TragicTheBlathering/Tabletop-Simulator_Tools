@@ -1,0 +1,12 @@
+function onload()
+    self.createButton({
+        label="Print GetData + More", click_function="b_Function", function_owner=self,
+        position={0,0.5,1}, rotation={0,180,0}, height=500, width=2800,
+        font_size=250
+    })
+end
+
+function b_Function()
+    local obj = getObjectFromGUID(self.getDescription())
+    print(logString(obj.getBounds().size.y))
+end

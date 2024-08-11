@@ -8,5 +8,5 @@ end
 
 function b_Function()
     local obj = getObjectFromGUID(self.getDescription())
-    print(logString(obj.getBounds().size.y))
+    print(logString(obj.getData()))
 end

@@ -103,7 +103,7 @@ function printSnapResults(tagsList)
 
     elseif action == 'Add' then
         if tagsList.TagList.add[1] then
-            print('!!!')
+            --print('!!!')
             printToAll(hexC.orange..'All'..hexC.yellow..' Snaps'..hexC.orange..' found inside'..hexC.yellow..' Zone'..hexC.orange..' have had their existing tags : '..hexC.green..'ADDED TO')
             print(logString(tagsList.TagList.add, '---- Tags Added to Snaps ----'))
         else
